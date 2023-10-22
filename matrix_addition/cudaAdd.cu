@@ -1,6 +1,4 @@
-﻿#include <iostream>
-#include <time.h>
-#include "cuda_runtime.h"
+﻿#include "cuda_runtime.h"
 
 __global__ void vectorAdditionKernel(double* A, double* B, double* C, int arraySize) {
     // Get thread ID.
@@ -25,30 +23,12 @@ __global__ void global_cudaMatAdd(double* A, double* B, double* C, size_t N)
     }
 }
 
-void kernel(double* A, double* B, double* C, int arraySize) {
-
-    // Initialize device pointers.
-    double* d_A, * d_B, * d_C;
-
-    // Allocate device memory.
-    cudaMalloc((void**)&d_A, arraySize * sizeof(double));
-    cudaMalloc((void**)&d_B, arraySize * sizeof(double));
-    cudaMalloc((void**)&d_C, arraySize * sizeof(double));
-
-    // Transfer arrays a and b to device.
-    cudaMemcpy(d_A, A, arraySize * sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_B, B, arraySize * sizeof(double), cudaMemcpyHostToDevice);
-
-    // Calculate blocksize and gridsize.
-    dim3 blockSize(512, 1, 1);
-    dim3 gridSize(512 / arraySize + 1, 1);
-
-    // Launch CUDA kernel.
-    vectorAdditionKernel << <gridSize, blockSize >> > (d_A, d_B, d_C, arraySize);
-
-    // Copy result array c back to host memory.
-    cudaMemcpy(C, d_C, arraySize * sizeof(double), cudaMemcpyDeviceToHost);
-}
+void cpu_addition(double* h_A, double* h_B, double* h_C, size_t N)
+{
+    for (int i = 0; i < N; i++)
+        for (int j = 0; j < N; j++)
+            h_C[i * N + j] = h_A[i * N + j] + h_B[i * N + j];
+};
 
 void global_cudaAdd(double* A, double* B, double* C, size_t N)
 {

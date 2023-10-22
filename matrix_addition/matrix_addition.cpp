@@ -2,14 +2,9 @@
 #include <cstdlib>
 #include <random>
 #include <time.h>
-#include "cudaAdd.cuh"
+#include "cudaheader.cuh"
 
-void cpu_addition(double* h_A, double* h_B, double* h_C, size_t N)
-{
-    for (int i = 0; i < N; i++)
-        for (int j = 0; j < N; j++)
-            h_C[i * N + j] = h_A[i * N + j] + h_B[i * N + j];
-};
+#define DIM 1024
 
 void matrix_coutput(double* matrix, size_t N, size_t xy_offset, size_t xy_length)
 {
@@ -27,6 +22,7 @@ void matrix_coutput(double* matrix, size_t N, size_t xy_offset, size_t xy_length
 // This program is designed to test the performance of matrix addition computed by different techniques 
 int main()
 {
+    /*
     size_t N = 4096; // Problem size
 
     double* h_A = new double[N * N]{0.0};
@@ -61,7 +57,41 @@ int main()
     std::cout << "GPU computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
 
     matrix_coutput(h_C, N, 5, 3);
+    */
 
+    size_t N = 1024;
+    filterKernel fk;
+    fk.top = 2;
+    fk.bottom = 1;
+    fk.left = 4;
+    fk.right = 5;
+    fk.center = 0;
+    fk.top_left = 8;
+    fk.top_right = 6;
+    fk.bottom_left = 7;
+    fk.bottom_right = 3;
+
+    clock_t tic;
+    clock_t toc;
+
+    int* inputImg = new int[N * N]{ 0 };
+    int* outputImg = new int[(N - 2) * (N - 2)]{ 0 };
+    for (size_t i = 0; i < N * N; i++)inputImg[i] = i;
+
+    tic = clock();
+    std::cout << "-------- Global memory -------- \n";
+    global_imgFiltering(outputImg, inputImg, N, fk);
+    toc = clock();
+    std::cout << "Computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
+
+    tic = clock();
+    std::cout << "-------- Texture memory -------- \n";
+    texture_imgFiltering(outputImg, inputImg, N, fk);
+    toc = clock();
+    std::cout << "Computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
+
+    delete[] inputImg;
+    delete[] outputImg;
     return 0;
 }
 

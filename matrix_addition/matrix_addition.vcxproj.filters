@@ -20,12 +20,15 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cudaAdd.cuh">
+    <ClInclude Include="cudaheader.cuh">
       <Filter>源文件</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="cudaAdd.cu">
+      <Filter>源文件</Filter>
+    </CudaCompile>
+    <CudaCompile Include="imgFilter.cu">
       <Filter>源文件</Filter>
     </CudaCompile>
   </ItemGroup>

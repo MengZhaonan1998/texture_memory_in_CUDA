@@ -145,10 +145,11 @@
     <ClCompile Include="matrix_addition.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cudaAdd.cuh" />
+    <ClInclude Include="cudaheader.cuh" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="cudaAdd.cu" />
+    <CudaCompile Include="imgFilter.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
