@@ -59,8 +59,9 @@ int main()
     matrix_coutput(h_C, N, 5, 3);
     */
 
-    size_t N = 1024;
-    filterKernel fk;
+    size_t N = 128; 
+    filterKernel fk; 
+    
     fk.top = 2;
     fk.bottom = 1;
     fk.left = 4;
@@ -80,15 +81,22 @@ int main()
 
     tic = clock();
     std::cout << "-------- Global memory -------- \n";
-    global_imgFiltering(outputImg, inputImg, N, fk);
+    for (size_t i = 0; i < 10; i++) global_imgFiltering(outputImg, inputImg, N, fk);
     toc = clock();
     std::cout << "Computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
 
     tic = clock();
     std::cout << "-------- Texture memory -------- \n";
-    texture_imgFiltering(outputImg, inputImg, N, fk);
+    for (size_t i = 0; i < 10; i++) texture_imgFiltering(outputImg, inputImg, N, fk);
     toc = clock();
     std::cout << "Computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
+
+    tic = clock();
+    std::cout << "-------- Constant memory -------- \n";
+    for (size_t i = 0; i < 10; i++) constant_imgFiltering(outputImg, inputImg, N, fk);
+    toc = clock();
+    std::cout << "Computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
+
 
     delete[] inputImg;
     delete[] outputImg;

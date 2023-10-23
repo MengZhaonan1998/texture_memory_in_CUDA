@@ -18,3 +18,4 @@ typedef struct {
 void cpu_imgFiltering(int* outputImg, int* inputImg, size_t imgSize, filterKernel fk);
 void global_imgFiltering(int* outputImg, int* inputImg, size_t imgDim, filterKernel fk);
 void  texture_imgFiltering(int* outputImg, int* inputImg, size_t imgDim, filterKernel fk);
+void constant_imgFiltering(int* outputImg, int* inputImg, size_t imgDim, filterKernel fk);

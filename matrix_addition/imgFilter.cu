@@ -3,6 +3,8 @@
 
 texture<int, 2> texIn;
 
+__constant__ int constIn[16384];
+
 void cpu_imgFiltering(int* outputImg, int* inputImg, size_t imgSize, filterKernel fk) 
 {
 	for (size_t i=1; i<imgSize-1; i++)
@@ -38,7 +40,24 @@ __global__ void global_filterKernel(int* d_outputImg, int* d_inputImg, filterKer
         fk.bottom_right * d_inputImg[(x + 2) + (y + 2) * blockDim.x * gridDim.x];
 }
 
-__global__ void global_filterKernel(int* d_outputImg, filterKernel fk)
+__global__ void const_filterKernel(int* d_outputImg, filterKernel fk)
+{
+    int x = threadIdx.x + blockIdx.x * blockDim.x;
+    int y = threadIdx.y + blockIdx.y * blockDim.y;
+    int offset = x + y * blockDim.x * gridDim.x;
+    d_outputImg[offset] =
+        fk.top_left * constIn[x + y * blockDim.x * gridDim.x] +
+        fk.top * constIn[(x + 1) + y * blockDim.x * gridDim.x] +
+        fk.top_right * constIn[(x + 2) + y * blockDim.x * gridDim.x] +
+        fk.left * constIn[x + (y + 1) * blockDim.x * gridDim.x] +
+        fk.center * constIn[(x + 1) + (y + 1) * blockDim.x * gridDim.x] +
+        fk.right * constIn[(x + 2) + (y + 1) * blockDim.x * gridDim.x] +
+        fk.bottom_left * constIn[x + (y + 2) * blockDim.x * gridDim.x] +
+        fk.bottom * constIn[(x + 1) + (y + 2) * blockDim.x * gridDim.x] +
+        fk.bottom_right * constIn[(x + 2) + (y + 2) * blockDim.x * gridDim.x];
+}
+
+__global__ void texture_filterKernel(int* d_outputImg, filterKernel fk)
 {
     int x = threadIdx.x + blockIdx.x * blockDim.x;
     int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -81,15 +100,33 @@ void  texture_imgFiltering(int* outputImg, int* inputImg, size_t imgDim, filterK
     int* d_inputImg;
     int* d_outputImg;
 
-    
-   
     cudaMalloc((void**)&d_inputImg, imgDim * imgDim * sizeof(int));
     cudaMalloc((void**)&d_outputImg, (imgDim - 2) * (imgDim - 2) * sizeof(int));
 
     cudaChannelFormatDesc desc = cudaCreateChannelDesc<int>();
     cudaBindTexture2D(NULL, texIn, d_inputImg, desc, imgDim, imgDim, sizeof(int) * imgDim);
     
+    dim3 blocks(imgDim / 32, imgDim / 32);
+    dim3 threads(32, 32);
+    texture_filterKernel << <blocks, threads >> > (d_outputImg, fk);
+
     cudaUnbindTexture(texIn);
     cudaFree(d_inputImg);
+    cudaFree(d_outputImg);
+}
+
+void constant_imgFiltering(int* outputImg, int* inputImg, size_t imgDim, filterKernel fk)
+{
+    int* d_outputImg;
+    cudaMemcpyToSymbol("constIn", inputImg, 16384 * sizeof(int), 0, cudaMemcpyHostToDevice);
+
+    cudaMalloc((void**)&d_outputImg, (imgDim - 2) * (imgDim - 2) * sizeof(int));
+
+    dim3 blocks(imgDim / 32, imgDim / 32);
+    dim3 threads(32, 32);
+
+    const_filterKernel << <blocks, threads >> > (d_outputImg, fk);
+
+    cudaMemcpy(outputImg, d_outputImg, (imgDim - 2) * (imgDim - 2) * sizeof(int), cudaMemcpyDeviceToHost);
     cudaFree(d_outputImg);
 }
