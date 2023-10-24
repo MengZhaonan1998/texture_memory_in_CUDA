@@ -20,7 +20,7 @@ void matrix_coutput(double* matrix, size_t N, size_t xy_offset, size_t xy_length
 }
 
 // This program is designed to test the performance of matrix addition computed by different techniques 
-int main()
+void test_imgfilter()
 {
     /*
     size_t N = 4096; // Problem size
@@ -97,9 +97,54 @@ int main()
     toc = clock();
     std::cout << "Computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
 
-
     delete[] inputImg;
     delete[] outputImg;
-    return 0;
 }
 
+void test_matrixadd()
+{
+    size_t N = 8192; // Problem size
+
+    int* h_A = new int[N]{ 0 };
+    int* h_B = new int[N]{ 0 };
+    int* h_C = new int[N]{ 0 };
+
+    for (size_t i = 0; i < N; i++)
+    {
+        h_A[i] = 2 * i;
+        h_B[i] = 3 * i;
+        h_C[i] = 0;
+    }
+
+    clock_t tic;
+    clock_t toc;
+
+    tic = clock();
+    std::cout << "-------- Global memory -------- \n";
+    for (size_t i = 0; i < 10; i++) global_cudaAdd(h_A, h_B, h_C, N);
+    toc = clock();
+    std::cout << "GPU computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
+
+    tic = clock();
+    std::cout << "-------- Constant memory -------- \n";
+    for (size_t i = 0; i < 10; i++) constant_cudaAdd(h_A, h_B, h_C, N);
+    toc = clock();
+    std::cout << "GPU computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
+
+    tic = clock();
+    std::cout << "-------- Texture memory -------- \n";
+    for (size_t i = 0; i < 10; i++) texture_cudaAdd(h_A, h_B, h_C, N);
+    toc = clock();
+    std::cout << "GPU computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
+
+    delete[] h_A;
+    delete[] h_B;
+    delete[] h_C;
+}
+
+int main()
+{
+    test_matrixadd();
+
+    return 0;
+}

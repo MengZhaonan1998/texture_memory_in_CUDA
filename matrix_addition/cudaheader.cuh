@@ -1,7 +1,7 @@
 ﻿void cpu_addition(double* h_A, double* h_B, double* h_C, size_t N);
-void global_cudaAdd(double* A, double* B, double* C, size_t N);
-void constant_cudaAdd(double* A, double* B, double* C, size_t N);
-void texture1D_cudaAdd(double* A, double* B, double* C, size_t N);
+void global_cudaAdd(int* A, int* B, int* C, size_t N);
+void constant_cudaAdd(int* A, int* B, int* C, size_t N);
+void texture_cudaAdd(int* A, int* B, int* C, size_t N);
 
 typedef struct {
 	int top;
