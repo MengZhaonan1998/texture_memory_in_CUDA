@@ -140,6 +140,7 @@ void test_matrixadd()
     delete[] h_A;
     delete[] h_B;
     delete[] h_C;
+
 }
 
 int main()
