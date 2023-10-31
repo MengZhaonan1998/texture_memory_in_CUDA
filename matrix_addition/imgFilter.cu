@@ -1,132 +1,154 @@
 ﻿#include "cuda_runtime.h"
 #include "cudaheader.cuh"
+#include <stdio.h>
 
-texture<int, 2> texIn;
+texture<int, 2> texMask;
 
-__constant__ int constIn[16384];
-
-void cpu_imgFiltering(int* outputImg, int* inputImg, size_t imgSize, filterKernel fk) 
+__global__ void globalConvKernel(int* dev_inputImg, int* dev_convMask, size_t imgSize, size_t maskSize)
 {
-	for (size_t i=1; i<imgSize-1; i++)
-		for (size_t j = 1; j < imgSize - 1; j++)
-		{
-            outputImg[(i - 1) * (imgSize - 2) + (j - 1)] = 
-                fk.top * inputImg[(i - 1) * imgSize + j] +
-                fk.bottom * inputImg[(i + 1) * imgSize + j] +
-                fk.left * inputImg[i * imgSize + (j - 1)] +
-                fk.right * inputImg[i * imgSize + (j + 1)] +
-                fk.center * inputImg[i * imgSize + j] +
-                fk.top_left * inputImg[(i - 1) *imgSize + (j - 1)] +
-                fk.top_right * inputImg[(i - 1) * imgSize + (j + 1)] +
-                fk.bottom_left * inputImg[(i + 1) * imgSize + (j - 1)] +
-                fk.bottom_right * inputImg[(i + 1) * imgSize + (j + 1)];
-		}
+    int x = maskSize / 2 + threadIdx.x + blockIdx.x * blockDim.x;
+    int y = maskSize / 2 + threadIdx.y + blockIdx.y * blockDim.y;
+
+    while (x < imgSize - maskSize / 2 && y < imgSize - maskSize / 2)
+    {
+        for(size_t i = 0; i < maskSize; i++)
+            for (size_t j = 0; j < maskSize; j++)
+            {
+                dev_inputImg[x + y * blockDim.x * gridDim.x] += 
+                    dev_inputImg[(x + i - maskSize / 2) + (y + j - maskSize / 2) * blockDim.x * gridDim.x] * dev_convMask[i * maskSize + j];
+            }
+        x += blockDim.x * gridDim.x;
+        y += blockDim.y * gridDim.y;
+    }
 }
 
-__global__ void global_filterKernel(int* d_outputImg, int* d_inputImg, filterKernel fk)
+__global__ void textureConvKernel(int* dev_inputImg, size_t imgSize, size_t maskSize)
 {
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
-    int offset = x + y * blockDim.x * gridDim.x;
-    d_outputImg[offset] = 
-        fk.top_left * d_inputImg[x + y * blockDim.x * gridDim.x] +
-        fk.top * d_inputImg[(x + 1) + y * blockDim.x * gridDim.x] +
-        fk.top_right * d_inputImg[(x + 2) + y * blockDim.x * gridDim.x] +
-        fk.left * d_inputImg[x + (y + 1) * blockDim.x * gridDim.x] +
-        fk.center * d_inputImg[(x + 1) + (y + 1) * blockDim.x * gridDim.x] +
-        fk.right * d_inputImg[(x + 2) + (y + 1) * blockDim.x * gridDim.x] +
-        fk.bottom_left * d_inputImg[x + (y + 2) * blockDim.x * gridDim.x] +
-        fk.bottom * d_inputImg[(x + 1) + (y + 2) * blockDim.x * gridDim.x] +
-        fk.bottom_right * d_inputImg[(x + 2) + (y + 2) * blockDim.x * gridDim.x];
+    int x = maskSize / 2 + threadIdx.x + blockIdx.x * blockDim.x;
+    int y = maskSize / 2 + threadIdx.y + blockIdx.y * blockDim.y;
+
+    while (x < imgSize - maskSize / 2 && y < imgSize - maskSize / 2)
+    {
+        for (size_t i = 0; i < maskSize; i++)
+            for (size_t j = 0; j < maskSize; j++)
+            {
+                dev_inputImg[x + y * blockDim.x * gridDim.x] +=
+                    dev_inputImg[(x + i - maskSize / 2) + (y + j - maskSize / 2) * blockDim.x * gridDim.x] * tex2D(texMask, i, j);
+            }
+        x += blockDim.x * gridDim.x;
+        y += blockDim.y * gridDim.y;
+    }
 }
 
-__global__ void const_filterKernel(int* d_outputImg, filterKernel fk)
+void  globalFiltering(int* inputImg, int* convMask, size_t imgSize, size_t maskSize)
 {
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
-    int offset = x + y * blockDim.x * gridDim.x;
-    d_outputImg[offset] =
-        fk.top_left * constIn[x + y * blockDim.x * gridDim.x] +
-        fk.top * constIn[(x + 1) + y * blockDim.x * gridDim.x] +
-        fk.top_right * constIn[(x + 2) + y * blockDim.x * gridDim.x] +
-        fk.left * constIn[x + (y + 1) * blockDim.x * gridDim.x] +
-        fk.center * constIn[(x + 1) + (y + 1) * blockDim.x * gridDim.x] +
-        fk.right * constIn[(x + 2) + (y + 1) * blockDim.x * gridDim.x] +
-        fk.bottom_left * constIn[x + (y + 2) * blockDim.x * gridDim.x] +
-        fk.bottom * constIn[(x + 1) + (y + 2) * blockDim.x * gridDim.x] +
-        fk.bottom_right * constIn[(x + 2) + (y + 2) * blockDim.x * gridDim.x];
-}
+    int* dev_inputImg;
+    int* dev_convMask;
+    cudaError_t cudaStatus;
 
-__global__ void texture_filterKernel(int* d_outputImg, filterKernel fk)
-{
-    int x = threadIdx.x + blockIdx.x * blockDim.x;
-    int y = threadIdx.y + blockIdx.y * blockDim.y;
-    int offset = x + y * blockDim.x * gridDim.x;
-    d_outputImg[offset] =
-        fk.top_left * tex2D(texIn, x, y) +
-        fk.top * tex2D(texIn, x + 1, y) +
-        fk.top_right * tex2D(texIn, x + 2, y) +
-        fk.left * tex2D(texIn, x, y + 1) +
-        fk.center * tex2D(texIn, x + 1, y + 1) +
-        fk.right * tex2D(texIn, x + 2, y + 1) +
-        fk.bottom_left * tex2D(texIn, x, y + 2) +
-        fk.bottom * tex2D(texIn, x + 1, y + 2) +
-        fk.bottom_right * tex2D(texIn, x + 2, y + 2);
-}
+    cudaStatus = cudaSetDevice(0);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaSetDevice failed!");
+        goto Error;
+    }
 
-void  global_imgFiltering(int* outputImg, int* inputImg, size_t imgDim, filterKernel fk)
-{
-    int* d_inputImg;
-    int* d_outputImg;
+    cudaStatus = cudaMalloc((void**)&dev_inputImg, imgSize * imgSize * sizeof(int));
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed!");
+        goto Error;
+    }
+    cudaStatus = cudaMalloc((void**)&dev_convMask, maskSize * maskSize * sizeof(int));
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed!");
+        goto Error;
+    }
 
-    cudaMalloc((void**)&d_inputImg, imgDim * imgDim * sizeof(int));
-    cudaMalloc((void**)&d_outputImg, (imgDim - 2) * (imgDim - 2) * sizeof(int));
+    cudaStatus = cudaMemcpy(dev_inputImg, inputImg, imgSize * imgSize * sizeof(int), cudaMemcpyHostToDevice);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!");
+        goto Error;
+    }
+    cudaStatus = cudaMemcpy(dev_convMask, convMask, maskSize * maskSize * sizeof(int), cudaMemcpyHostToDevice);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!");
+        goto Error;
+    }
 
-    cudaMemcpy(d_inputImg, inputImg, imgDim * imgDim * sizeof(int), cudaMemcpyHostToDevice);
-    
-    dim3 blocks(imgDim / 32, imgDim / 32);
+    dim3 blocks((imgSize - maskSize + 31) / 32, (imgSize - maskSize + 31) / 32);
     dim3 threads(32, 32);
 
-    global_filterKernel << <blocks, threads >> > (d_outputImg, d_inputImg, fk);
+    globalConvKernel << <blocks, threads >> > (dev_inputImg, dev_convMask, imgSize, maskSize);
+    cudaStatus = cudaGetLastError();
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+        goto Error;
+    }
 
-    cudaMemcpy(outputImg, d_outputImg, (imgDim - 2) * (imgDim - 2) * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaStatus = cudaMemcpy(inputImg, dev_inputImg, imgSize * imgSize * sizeof(int), cudaMemcpyDeviceToHost);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!");
+        goto Error;
+    }
 
-    cudaFree(d_inputImg);
-    cudaFree(d_outputImg);
+Error:
+    cudaFree(dev_inputImg);
 }
 
-void  texture_imgFiltering(int* outputImg, int* inputImg, size_t imgDim, filterKernel fk)
+void  textureFiltering(int* inputImg, int* convMask, size_t imgSize, size_t maskSize)
 {
-    int* d_inputImg;
-    int* d_outputImg;
+    int* dev_inputImg;
+    int* dev_convMask;
+    cudaError_t cudaStatus;
 
-    cudaMalloc((void**)&d_inputImg, imgDim * imgDim * sizeof(int));
-    cudaMalloc((void**)&d_outputImg, (imgDim - 2) * (imgDim - 2) * sizeof(int));
+    cudaStatus = cudaSetDevice(0);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaSetDevice failed!");
+        goto Error;
+    }
+
+    cudaStatus = cudaMalloc((void**)&dev_inputImg, imgSize * imgSize * sizeof(int));
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed!");
+        goto Error;
+    }
+    cudaStatus = cudaMalloc((void**)&dev_convMask, maskSize * maskSize * sizeof(int));
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMalloc failed!");
+        goto Error;
+    }
+
+    cudaStatus = cudaMemcpy(dev_inputImg, inputImg, imgSize * imgSize * sizeof(int), cudaMemcpyHostToDevice);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!");
+        goto Error;
+    }
+    cudaStatus = cudaMemcpy(dev_convMask, convMask, maskSize * maskSize * sizeof(int), cudaMemcpyHostToDevice);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!");
+        goto Error;
+    }
 
     cudaChannelFormatDesc desc = cudaCreateChannelDesc<int>();
-    cudaBindTexture2D(NULL, texIn, d_inputImg, desc, imgDim, imgDim, sizeof(int) * imgDim);
-    
-    dim3 blocks(imgDim / 32, imgDim / 32);
-    dim3 threads(32, 32);
-    texture_filterKernel << <blocks, threads >> > (d_outputImg, fk);
+    cudaBindTexture2D(NULL, texMask, dev_inputImg, desc, maskSize, maskSize, sizeof(int) * maskSize);
 
-    cudaUnbindTexture(texIn);
-    cudaFree(d_inputImg);
-    cudaFree(d_outputImg);
-}
-
-void constant_imgFiltering(int* outputImg, int* inputImg, size_t imgDim, filterKernel fk)
-{
-    int* d_outputImg;
-    cudaMemcpyToSymbol("constIn", inputImg, 16384 * sizeof(int), 0, cudaMemcpyHostToDevice);
-
-    cudaMalloc((void**)&d_outputImg, (imgDim - 2) * (imgDim - 2) * sizeof(int));
-
-    dim3 blocks(imgDim / 32, imgDim / 32);
+    dim3 blocks((imgSize - maskSize + 31) / 32, (imgSize - maskSize + 31) / 32);
     dim3 threads(32, 32);
 
-    const_filterKernel << <blocks, threads >> > (d_outputImg, fk);
+    textureConvKernel << <blocks, threads >> > (dev_inputImg, imgSize, maskSize);
+    cudaStatus = cudaGetLastError();
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
+        goto Error;
+    }
 
-    cudaMemcpy(outputImg, d_outputImg, (imgDim - 2) * (imgDim - 2) * sizeof(int), cudaMemcpyDeviceToHost);
-    cudaFree(d_outputImg);
+    cudaStatus = cudaMemcpy(inputImg, dev_inputImg, imgSize * imgSize * sizeof(int), cudaMemcpyDeviceToHost);
+    if (cudaStatus != cudaSuccess) {
+        fprintf(stderr, "cudaMemcpy failed!");
+        goto Error;
+    }
+
+    cudaUnbindTexture(texMask);
+
+Error:
+    cudaFree(dev_inputImg);
 }

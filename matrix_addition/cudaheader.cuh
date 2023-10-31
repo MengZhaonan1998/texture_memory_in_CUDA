@@ -9,13 +9,10 @@ typedef struct {
 	int left;
 	int right;
 	int center;
-	int top_left;
-	int top_right;
-	int bottom_left;
-	int bottom_right;
 } filterKernel;
 
-void cpu_imgFiltering(int* outputImg, int* inputImg, size_t imgSize, filterKernel fk);
-void global_imgFiltering(int* outputImg, int* inputImg, size_t imgDim, filterKernel fk);
-void  texture_imgFiltering(int* outputImg, int* inputImg, size_t imgDim, filterKernel fk);
-void constant_imgFiltering(int* outputImg, int* inputImg, size_t imgDim, filterKernel fk);
+void  textureAccess(int* outputImg, int* inputImg, size_t imgSize, filterKernel fk);
+void  globalAccess(int* outputImg, int* inputImg, size_t imgSize, filterKernel fk);
+
+void  globalFiltering(int* inputImg, int* convMask, size_t imgSize, size_t maskSize);
+void  textureFiltering(int* inputImg, int* convMask, size_t imgSize, size_t maskSize);

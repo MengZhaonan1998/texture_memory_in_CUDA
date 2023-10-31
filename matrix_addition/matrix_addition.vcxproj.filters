@@ -31,5 +31,8 @@
     <CudaCompile Include="imgFilter.cu">
       <Filter>源文件</Filter>
     </CudaCompile>
+    <CudaCompile Include="memoryTest.cu">
+      <Filter>源文件</Filter>
+    </CudaCompile>
   </ItemGroup>
 </Project>
