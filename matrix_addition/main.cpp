@@ -43,36 +43,30 @@ void ConvolutionFiltering()
 
 void MemoryAccess()
 {
-    size_t imgSize = 512;   // image size
+    size_t imgSize = 4096;   
     filterKernel fk;
     fk.left = 1;
     fk.right = 2;
     fk.top = 3;
     fk.bottom = 4;
     fk.center = -1;
-    // Allocate host memory
+
     int* inputImg = new int[imgSize * imgSize]{ 0 };
     int* outputImg = new int[imgSize * imgSize]{ 0 };
 
-    // Initialization
-    for (size_t i = 0; i < imgSize * imgSize; i++)inputImg[i] = rand();
+    for (size_t i = 0; i < imgSize * imgSize; i++)inputImg[i] = 1;
 
-    // Timer
     clock_t tic;
     clock_t toc;
 
-    // Test::Texture memory
     tic = clock();
     std::cout << "-------- Global memory -------- \n";
-    //for (size_t i = 0; i < 10; i++) global_imgFiltering(outputImg, inputImg, N, fk);
     globalAccess(outputImg, inputImg, imgSize, fk);
     toc = clock();
     std::cout << "Computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
 
-    // Test::Texture memory
     tic = clock();
     std::cout << "-------- Texture memory -------- \n";
-    //for (size_t i = 0; i < 10; i++) global_imgFiltering(outputImg, inputImg, N, fk);
     textureAccess(outputImg, inputImg, imgSize, fk);
     toc = clock();
     std::cout << "Computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
@@ -81,15 +75,15 @@ void MemoryAccess()
     delete[] outputImg;
 }
 
-void test_matrixadd()
+void arrayAdd()
 {
-    size_t N = 8192; // Problem size
+    size_t arraySize = 8192; 
 
-    int* h_A = new int[N]{ 0 };
-    int* h_B = new int[N]{ 0 };
-    int* h_C = new int[N]{ 0 };
+    int* h_A = new int[arraySize]{ 0 };
+    int* h_B = new int[arraySize]{ 0 };
+    int* h_C = new int[arraySize]{ 0 };
 
-    for (size_t i = 0; i < N; i++)
+    for (size_t i = 0; i < arraySize; i++)
     {
         h_A[i] = 2 * i;
         h_B[i] = 3 * i;
@@ -101,32 +95,34 @@ void test_matrixadd()
 
     tic = clock();
     std::cout << "-------- Global memory -------- \n";
-    for (size_t i = 0; i < 10; i++) global_cudaAdd(h_A, h_B, h_C, N);
+    for (size_t i = 0; i < 100; i++) globalArrayAdd(h_A, h_B, h_C, arraySize);
     toc = clock();
     std::cout << "GPU computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
 
     tic = clock();
     std::cout << "-------- Constant memory -------- \n";
-    for (size_t i = 0; i < 10; i++) constant_cudaAdd(h_A, h_B, h_C, N);
+    for (size_t i = 0; i < 100; i++) constantArrayAdd(h_A, h_B, h_C, arraySize);
     toc = clock();
     std::cout << "GPU computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
 
     tic = clock();
     std::cout << "-------- Texture memory -------- \n";
-    for (size_t i = 0; i < 10; i++) texture_cudaAdd(h_A, h_B, h_C, N);
+    for (size_t i = 0; i < 100; i++) textureArrayAdd(h_A, h_B, h_C, arraySize);
     toc = clock();
     std::cout << "GPU computation completed! It took " << (double)(toc - tic) / CLOCKS_PER_SEC << " seconds" << std::endl;
 
     delete[] h_A;
     delete[] h_B;
     delete[] h_C;
-
 }
 
 int main()
 {
-    MemoryAccess();
+    GetDeviceInfo();
+    
+    //MemoryAccess();
     //ConvolutionFiltering();
+    arrayAdd();
 
     return 0;
 }

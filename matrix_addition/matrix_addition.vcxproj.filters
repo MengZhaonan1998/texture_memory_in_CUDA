@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="matrix_addition.cpp">
+    <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
@@ -25,13 +25,16 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="cudaAdd.cu">
+    <CudaCompile Include="arrayAdd.cu">
       <Filter>源文件</Filter>
     </CudaCompile>
     <CudaCompile Include="imgFilter.cu">
       <Filter>源文件</Filter>
     </CudaCompile>
     <CudaCompile Include="memoryTest.cu">
+      <Filter>源文件</Filter>
+    </CudaCompile>
+    <CudaCompile Include="deviceInfo.cu">
       <Filter>源文件</Filter>
     </CudaCompile>
   </ItemGroup>
