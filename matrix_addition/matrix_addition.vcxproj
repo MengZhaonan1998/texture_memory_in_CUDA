@@ -150,6 +150,7 @@
   <ItemGroup>
     <CudaCompile Include="arrayAdd.cu" />
     <CudaCompile Include="deviceInfo.cu" />
+    <CudaCompile Include="matMultiply.cu" />
     <CudaCompile Include="memoryTest.cu" />
     <CudaCompile Include="imgFilter.cu" />
   </ItemGroup>
