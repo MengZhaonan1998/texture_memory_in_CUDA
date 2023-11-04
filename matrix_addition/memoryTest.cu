@@ -44,7 +44,7 @@ __global__ void texture_filterKernel(int* dev_outputImg, size_t imgSize, filterK
     }
 }
 
-void  textureAccess(int* outputImg, int* inputImg, size_t imgSize, filterKernel fk)
+void  textureAccessNO(int* outputImg, int* inputImg, size_t imgSize, filterKernel fk)
 {
     int* dev_inputImg;
     int* dev_outputImg;
@@ -98,7 +98,7 @@ void  textureAccess(int* outputImg, int* inputImg, size_t imgSize, filterKernel 
     cudaFree(dev_outputImg);
 }
 
-void  globalAccess(int* outputImg, int* inputImg, size_t imgSize, filterKernel fk)
+void  globalAccessNO(int* outputImg, int* inputImg, size_t imgSize, filterKernel fk)
 {
     int* dev_inputImg;
     int* dev_outputImg;

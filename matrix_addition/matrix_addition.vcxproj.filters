@@ -40,5 +40,8 @@
     <CudaCompile Include="matMultiply.cu">
       <Filter>源文件</Filter>
     </CudaCompile>
+    <CudaCompile Include="memoryAccess.cu">
+      <Filter>源文件</Filter>
+    </CudaCompile>
   </ItemGroup>
 </Project>
